@@ -83,6 +83,10 @@
   .picker-item:active{background:#fdeee6;}
   .picker-item.sel{background:#fdeee6; border-color:var(--primary); color:var(--primary); font-weight:600;}
   .picker-item .ck{color:var(--primary); font-weight:700;}
+  .custom-box{display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line);}
+  .custom-input{flex:1; min-height:40px; border:1px solid var(--line); border-radius:10px; padding:0 12px; font-size:15px; font-family:inherit; color:var(--text); background:#fbf7f2;}
+  .custom-input:focus{outline:none; border-color:var(--primary);}
+  .new-tag{display:inline-block; font-size:10px; color:#fff; background:#2fa46a; border-radius:5px; padding:0 4px; margin-left:6px; vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -126,7 +130,7 @@
         <li>本周主荤自动避开「上周主荤」；下周生成时也会自动避开本周（跨周不重复）。</li>
         <li>同一周内主荤尽量不重复，保证搭配丰富。</li>
         <li>菜品全部来自厨师历史菜单，按品类归类成库。</li>
-        <li>生成后点任意菜名可手动替换（从对应品类库中选），手动修改也会同步更新「避开上周」记忆。</li>
+        <li>生成后点任意菜名可手动替换（从对应品类库中选），也可输入新菜名——新菜会自动加入菜库并持久保存，下次生成随机出现，手动修改也会同步更新「避开上周」记忆。</li>
       </ul>
     </details>
   </div>
@@ -148,6 +152,10 @@
   <div class="sheet">
     <div class="picker-head"><span class="pt" id="editTitle">选择菜品</span><button class="btn ghost" style="min-height:38px;padding:0 14px" onclick="closeEdit()">关闭</button></div>
     <div class="picker-list" id="editList"></div>
+    <div class="custom-box" id="customBox">
+      <input id="customInput" class="custom-input" placeholder="输入新菜名，自动加入菜库" onkeydown="if(event.key==='Enter')addCustom()">
+      <button class="btn" style="min-height:40px;padding:0 14px" onclick="addCustom()">添加并使用</button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -173,14 +181,25 @@ const zhFishSet = new Set(ZH_FISH);
 const hhFishSet = new Set(HH_FISH);
 const tgFishSet = new Set(['墨鱼肉丸汤']);
 
+/* 用户自定义菜库（持久化于 state.custom，运行时合并到对应品类池） */
+let CUSTOM = {zh:[], hh:[], sc:[], tg:[]};
+/* 运行时水产判定：已分类的菜库 + 关键词兜底（覆盖自定义新菜） */
+function detectFish(name){
+  return /鱼|虾|蟹|贝|螺|蚝|鲍|海参|鱿鱼|墨鱼|泥鳅|花甲|圣子|鳝|石斑|鲷|鳗|龙利|巴沙|桂鱼|带鱼|甲鱼|鲈|黄丫头|黄牙头|黄芽头|鲶|鳜|鲫|鲢|草鱼|鲑|鳕|鲳|鲅/.test(name);
+}
+function isFish(name){
+  if(zhFishSet.has(name)||hhFishSet.has(name)||tgFishSet.has(name)) return true;
+  return detectFish(name);
+}
+
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); const t=a[i];a[i]=a[j];a[j]=t;} return a; }
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function dayName(i){ return NAME[i]; }
 
 function loadState(){
-  try{ const v=localStorage.getItem(KEY); if(v){ const s=JSON.parse(v); if(s && s.selected) return s; } }catch(e){}
+  try{ const v=localStorage.getItem(KEY); if(v){ const s=JSON.parse(v); if(s && s.selected){ if(!s.custom) s.custom={zh:[],hh:[],sc:[],tg:[]}; return s; } } }catch(e){}
   // 首屏示例：默认全选 7 天并自动生成一版，避免空白
-  const s={selected:[1,2,3,4,5,6,7], week:null, lastZhuhun:[]};
+  const s={selected:[1,2,3,4,5,6,7], week:null, lastZhuhun:[], custom:{zh:[],hh:[],sc:[],tg:[]}};
   const r0=buildWeek(s.selected, []);
   s.week=r0.week; s.lastZhuhun=r0.weekZh;
   saveState(s);
@@ -188,6 +207,13 @@ function loadState(){
 }
 function saveState(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
 let state = loadState();
+/* 把持久化的自定义菜库同步到运行时合并池 */
+CUSTOM = {
+  zh:(state.custom&&state.custom.zh||[]).slice(),
+  hh:(state.custom&&state.custom.hh||[]).slice(),
+  sc:(state.custom&&state.custom.sc||[]).slice(),
+  tg:(state.custom&&state.custom.tg||[]).slice()
+};
 
 function renderDays(){
   const box=document.getElementById('days');
@@ -223,22 +249,28 @@ function buildWeek(selected, lastArr){
   else fishCount=1;
   const order=shuffle(selected.slice());
   const fishDays=new Set(order.slice(0,fishCount));
-  // 非鱼日主荤：历史非鱼且非上周；鱼日主荤：历史鱼菜且非上周
-  const zhNonFish=shuffle(ZH.filter(n=> !last.has(n) && !zhFishSet.has(n)));
-  const zhFish=shuffle(ZH_FISH.filter(n=> !last.has(n)));
-  const hhNon=shuffle(HH.filter(n=>!hhFishSet.has(n)));
-  const scQ=shuffle(SC);
-  const tgQ=shuffle(TG.filter(n=>!tgFishSet.has(n)));
+  // 主荤池（含自定义）按是否水产拆分；非鱼日绝不出现鱼、鱼日必含鱼
+  const zhAll=poolAll('zh');
+  const zhNonFish=shuffle(zhAll.filter(n=> !last.has(n) && !isFish(n)));
+  const zhFish=shuffle(zhAll.filter(n=> isFish(n) && !last.has(n)));
+  const hhAll=poolAll('hh');
+  const hhNon=shuffle(hhAll.filter(n=>!isFish(n)));
+  const scQ=shuffle(poolAll('sc'));
+  const tgQ=shuffle(poolAll('tg').filter(n=>!isFish(n)));
 
   let ni=0,fi=0,hi=0,si=0,ti=0;
   const weekZh=[];
   const result=[];
   // 先给每一天分配 2 道「非鱼主荤」（保证非鱼日绝不出现鱼、且周内不重复）
   for(const idx of selected){
-    const zh=[ zhNonFish[ni++] || ZH[0], zhNonFish[ni++] || ZH[0] ];
+    const zhBase=poolAll('zh');
+    const zh=[ zhNonFish[ni++] || zhBase[0], zhNonFish[ni++] || zhBase[0] ];
+    const hhBase=poolAll('hh');
     const hh=[ hhNon[hi++], hhNon[hi++] ];
-    const sc= scQ[si++] || SC[0];
-    const tg= tgQ[ti++] || TG[0];
+    const scBase=poolAll('sc');
+    const sc= scQ[si++] || scBase[0];
+    const tgBase=poolAll('tg');
+    const tg= tgQ[ti++] || tgBase[0];
     result.push({idx,name:dayName(idx), zh, hh, sc, tg, fruit:FRUIT});
   }
   // 再在指定「鱼日」上替换 1 道鱼主荤（鱼日必含鱼、其余日绝不出现鱼）
@@ -251,11 +283,11 @@ function buildWeek(selected, lastArr){
 }
 
 function fishMark(name){
-  if(zhFishSet.has(name)||hhFishSet.has(name)||tgFishSet.has(name)) return '<span class="fishdot">鱼</span>';
+  if(isFish(name)) return '<span class="fishdot">鱼</span>';
   return '';
 }
 function hasFish(d){
-  return d.zh.some(x=>zhFishSet.has(x)) || d.hh.some(x=>hhFishSet.has(x)) || tgFishSet.has(d.tg);
+  return d.zh.some(x=>isFish(x)) || d.hh.some(x=>isFish(x)) || isFish(d.tg);
 }
 function rowHTML(dayIdx, cat, tag, label, items){
   const dis = items.map((x,pos)=>{
@@ -279,7 +311,7 @@ function renderResult(){
       + rowHTML(d.idx,'fr','fr','水果',[d.fruit])
       + '</div>';
   }).join('')
-  + '<p class="edit-hint">✎ 点任意菜名可手动替换（从对应品类库中选择）</p>';
+  + '<p class="edit-hint">✎ 点任意菜名可手动替换，或输入新菜名（自动加入菜库，带「新」标记）。</p>';
 }
 function renderOverview(){
   const card=document.getElementById('overviewCard');
@@ -296,11 +328,12 @@ function renderOverview(){
     '已自动避开上周主荤（'+(lastCnt?lastCnt:0)+' 道）；下次生成将自动避开本周主荤。';
 }
 
-/* 手动改菜：点菜名 → 从对应品类库中选择替换 */
+/* 手动改菜：点菜名 → 从对应品类库中选择替换，或输入新菜（自动入库） */
 const CAT_LABEL = {zh:'主荤', hh:'花荤', sc:'素菜', tg:'汤', fr:'水果'};
 let editCtx = null;
-function catPool(cat){
-  return cat==='zh'?ZH : cat==='hh'?HH : cat==='sc'?SC : cat==='tg'?TG : [FRUIT];
+function poolAll(cat){
+  const base = cat==='zh'?ZH : cat==='hh'?HH : cat==='sc'?SC : cat==='tg'?TG : [FRUIT];
+  return base.concat(CUSTOM[cat]||[]);
 }
 function currentDish(d, cat, pos){
   if(cat==='zh') return d.zh[pos];
@@ -314,21 +347,26 @@ function editDish(dayIdx, cat, pos){
   const d = state.week.find(x=>x.idx===dayIdx);
   if(!d) return;
   const cur = currentDish(d, cat, pos);
-  const pool = catPool(cat);
+  const pool = poolAll(cat);
   document.getElementById('editTitle').textContent = '选择'+CAT_LABEL[cat];
   let html = '';
+  const customSet = CUSTOM[cat]||[];
   pool.forEach((n,i)=>{
     const sel = n===cur ? ' sel' : '';
     const ck = n===cur ? '<span class="ck">✓</span>' : '';
-    html += '<div class="picker-item'+sel+'" onclick="pickDish('+i+')">'+esc(n)+fishMark(n)+ck+'</div>';
+    const nt = customSet.includes(n) ? '<span class="new-tag">新</span>' : '';
+    html += '<div class="picker-item'+sel+'" onclick="pickDish('+i+')">'+esc(n)+fishMark(n)+nt+ck+'</div>';
   });
   document.getElementById('editList').innerHTML = html;
+  // 水果固定为「水果」，不提供自定义输入框
+  document.getElementById('customBox').style.display = (cat==='fr') ? 'none' : 'flex';
+  const inp=document.getElementById('customInput'); if(inp) inp.value='';
   document.getElementById('editOverlay').style.display='flex';
 }
 function pickDish(i){
   if(!editCtx) return;
   const {dayIdx, cat, pos} = editCtx;
-  const pool = catPool(cat);
+  const pool = poolAll(cat);
   const name = pool[i];
   const d = state.week.find(x=>x.idx===dayIdx);
   if(!d || name===undefined) return;
@@ -342,6 +380,29 @@ function pickDish(i){
   closeEdit();
   renderResult(); renderOverview();
   toast('已更新');
+}
+/* 自定义输入：若为新菜则自动加入对应品类菜库（持久化），再替换当前菜 */
+function addCustom(){
+  if(!editCtx) return;
+  const {cat} = editCtx;
+  if(cat==='fr'){ toast('水果固定为「水果」'); return; }
+  const inp=document.getElementById('customInput');
+  let name=(inp.value||'').trim();
+  if(!name){ toast('请输入菜名'); return; }
+  const pool=poolAll(cat);
+  let idx=pool.indexOf(name);
+  if(idx<0){
+    if(!state.custom) state.custom={zh:[],hh:[],sc:[],tg:[]};
+    if(!state.custom[cat]) state.custom[cat]=[];
+    state.custom[cat].push(name);   // 持久化
+    CUSTOM[cat].push(name);         // 运行时合并池
+    idx = poolAll(cat).length-1;
+    toast('已加入菜库');
+  } else {
+    toast('已从菜库选用');
+  }
+  inp.value='';
+  pickDish(idx);
 }
 function closeEdit(){
   document.getElementById('editOverlay').style.display='none';
