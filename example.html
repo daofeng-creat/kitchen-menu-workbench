@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>抚州市教育体育局厨房每周配菜工作台</title>
+<style>
+  :root{
+    --bg:#fbf7f2; --card:#ffffff; --line:#efe6dc; --text:#2b2620; --muted:#9a8f80;
+    --primary:#e8743b; --primary-d:#cf5f2c;
+    --c-zh:#e8743b; --c-hh:#e0a32e; --c-sc:#2fa46a; --c-tg:#4F7CFF; --c-fr:#d6447c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--text); font-size:16px; line-height:1.5;
+    padding:16px; padding-bottom:calc(20px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+  h1{font-size:22px; margin:0 0 2px; display:flex; align-items:center; gap:8px;}
+  h1 svg{width:24px;height:24px;}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:14px;}
+  .card h2{font-size:16px; margin:0 0 12px; display:flex; align-items:center; gap:8px;}
+  .card h2 svg{width:18px;height:18px;}
+  button{font-family:inherit; font-size:16px; cursor:pointer;}
+  .btn{min-height:46px; padding:0 18px; border:none; border-radius:11px; background:var(--primary); color:#fff; font-weight:600; display:inline-flex; align-items:center; gap:6px;}
+  .btn:active{background:var(--primary-d);}
+  .btn.ghost{background:#fdeee6; color:var(--primary);}
+  .btn.wide{width:100%; justify-content:center;}
+  .btn svg{width:18px;height:18px;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .toolbar .btn{padding:0 12px; min-height:44px; font-size:14px;}
+  /* 工作日选择 */
+  .days{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
+  .day{position:relative; min-height:48px; border:1.5px solid var(--line); border-radius:11px; background:#fff; color:var(--text); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:14px; padding:6px 2px; line-height:1.1;}
+  .day .d-sub{font-size:11px; color:var(--muted);}
+  .day.on{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .day.on .d-sub{color:#ffe6d8;}
+  @media (max-width:480px){ .day{min-height:46px; font-size:13px;} }
+  .summary{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{font-size:13px; padding:6px 10px; border-radius:999px; background:#fdeee6; color:var(--primary);}
+  .chip.fish{background:#e7f7ee; color:var(--c-sc);}
+  .note{color:var(--muted); font-size:13px; margin-top:8px;}
+  /* 配菜卡片 */
+  .daycard{border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px; background:#fff;}
+  .daycard .dh{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .daycard .dh .dn{font-size:17px; font-weight:700;}
+  .badge-fish{font-size:12px; padding:2px 8px; border-radius:999px; background:#e7f7ee; color:var(--c-sc);}
+  .row{display:flex; align-items:flex-start; gap:10px; padding:6px 0; border-top:1px dashed #f1e9e0;}
+  .row:first-of-type{border-top:none;}
+  .tag{flex:0 0 46px; text-align:center; font-size:12px; padding:3px 0; border-radius:8px; color:#fff; font-weight:600;}
+  .tag.zh{background:var(--c-zh);} .tag.hh{background:var(--c-hh);} .tag.sc{background:var(--c-sc);} .tag.tg{background:var(--c-tg);} .tag.fr{background:var(--c-fr);}
+  .dishes{flex:1; font-size:15px;}
+  .fishdot{display:inline-block; font-size:11px; color:var(--c-tg); border:1px solid var(--c-tg); border-radius:6px; padding:0 4px; margin-left:6px; vertical-align:middle;}
+  details{font-size:13px; color:var(--muted);}
+  details summary{cursor:pointer; color:var(--primary);}
+  details ul{margin:8px 0 0; padding-left:18px;}
+  details li{margin:3px 0;}
+  .empty{color:var(--muted); font-size:14px; padding:10px 0;}
+  .toast{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); background:rgba(43,38,32,.92); color:#fff; padding:12px 20px; border-radius:10px; font-size:15px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99;}
+  /* 复制兜底：微信等环境剪贴板不可用时的长按复制面板 */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; justify-content:center; z-index:200; padding:0 0 env(safe-area-inset-bottom);}
+  .overlay .sheet{background:#fff; width:100%; max-width:760px; border-radius:16px 16px 0 0; padding:16px 16px 20px; box-shadow:0 -4px 20px rgba(0,0,0,.15);}
+  .overlay .sheet-h{font-size:15px; font-weight:600; margin-bottom:10px; color:var(--text);}
+  .overlay textarea{width:100%; height:240px; border:1px solid var(--line); border-radius:11px; padding:12px; font-size:15px; line-height:1.6; resize:none; font-family:inherit; color:var(--text); background:#fbf7f2;}
+  .overlay .hint{font-size:13px; color:var(--muted); margin:8px 0 12px;}
+  .overlay .btnrow{display:flex; gap:8px;}
+  .overlay .btnrow .btn{flex:1; justify-content:center;}
+  .toast.show{opacity:1;}
+  .footer{color:var(--muted); font-size:12px; text-align:center; margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>抚州市教育体育局厨房每周配菜工作台</h1>
+  <p class="sub">by：何康 · 勾选本周上班日 → 一键自动配菜 · 手机微信可直接打开</p>
+
+  <div class="toolbar">
+    <button class="btn ghost" onclick="exportJSON()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>导出 JSON</button>
+    <button class="btn ghost" onclick="document.getElementById('file').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="m7 13 5-5 5 5"/><path d="M5 3h14"/></svg>导入恢复</button>
+    <input id="file" type="file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+    <button class="btn ghost" onclick="resetAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>清空记录</button>
+  </div>
+
+  <div class="card">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="#e8743b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>本周工作日</h2>
+    <div class="days" id="days"></div>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn" onclick="generate()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>生成本周配菜</button>
+      <button class="btn ghost" id="copyBtn" onclick="copyWeek()" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>一键复制</button>
+    </div>
+  </div>
+
+  <div class="card" id="overviewCard" style="display:none">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="#e8743b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>本周概览</h2>
+    <div class="summary" id="summary"></div>
+    <p class="note" id="overviewNote"></p>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="#e8743b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>配菜结果</h2>
+    <div id="result"></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>配菜规则说明（点开查看）</summary>
+      <ul>
+        <li>每天按固定顺序出 7 道：主荤×2、花荤×2、素菜×1、汤×1、水果×1（水果固定为「水果」）。</li>
+        <li>每周水产（鱼/虾/贝等）次数固定为 2~3 次（工作日不足时取最大可能）。</li>
+        <li>本周主荤自动避开「上周主荤」；下周生成时也会自动避开本周（跨周不重复）。</li>
+        <li>同一周内主荤尽量不重复，保证搭配丰富。</li>
+        <li>菜品全部来自厨师历史菜单，按品类归类成库。</li>
+      </ul>
+    </details>
+  </div>
+
+  <p class="footer">数据仅保存在本机浏览器（localStorage）。换手机/清缓存前请先「导出备份」。</p>
+</div>
+<div class="overlay" id="copyFallback" style="display:none" onclick="if(event.target===this)closeCopyFallback()">
+  <div class="sheet">
+    <div class="sheet-h">复制未自动完成，请长按下方文字手动复制</div>
+    <textarea id="copyText" readonly></textarea>
+    <p class="hint">长按文本框 → 全选 → 复制，再粘贴到微信/备忘录即可。</p>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="closeCopyFallback()">关闭</button>
+      <button class="btn" onclick="retryCopy()">再试一次</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const ZH = ["红烧鱼块", "豆泡烧肉", "啤酒鸭", "鲶鱼烧荷包蛋", "临川猪杂", "回锅肉", "萝卜烧牛排", "肉末蒸蛋", "葱油鸡", "辣椒炒肉", "泡椒猪脚", "干煸泥鳅", "红烧石鸡", "爆炒口条", "欢喜丸", "酸菜大肠", "排骨烧土豆", "清蒸鲈鱼", "黄豆烧鸡爪", "三鲜扎素", "椒盐基围虾", "清蒸鸭", "小炒猪耳", "梅菜扣肉", "爆炒腰肝", "西红柿烧牛腩", "糯米蒸排骨", "酸辣肚丝", "小炒肉", "红烧猪脚", "鲶鱼烧豆腐", "米粉蒸肉", "三杯鸡", "香菜牛肉", "裤腿肉烧海带", "三鲜蛋菇", "大骨炖藕", "水煮肉片", "鹌鹑蛋烧肉", "红烧肉烧鹌鹑蛋", "红烧黄丫头", "龙骨烧海带", "黄豆烧猪脚", "小炒鸭杂", "香菜猪耳", "洋葱鳝片", "大骨烧藕", "木耳猪肝", "崇仁滑肉", "爆炒牛肉", "米酒烧乌鸡", "剁椒鱼头", "小炒猪脸肉", "鹿茸菇烧肉", "小泥鳅", "狮子头", "小炒牙板", "排骨烧鹌鹑蛋", "鱼香肉丝", "辣子鸡", "海带烧裤腿肉", "水煮鱼片", "酸辣肉皮", "香菜拌牛肉", "酒糟鱼", "荞子炒腊肉", "龙骨烧藕", "红烧鸭块", "红烧牛排", "爆炒鸭杂", "红烧羊肉", "红烧肉", "香辣鱼", "葱油圣子", "手撕鸡", "开胃花甲", "爆炒猪脸肉", "豆豉焖肉", "土豆烧牛腩", "大蒜炒香肠", "蒜苗口条", "临川牛杂", "西红柿牛腩", "开胃鱼", "蒜蓉基围虾", "家乡肉", "水芹炒肉", "豆豉烧肉", "菠萝咕咾肉", "蒜苗顺风", "马蹄木耳炒猪肝", "海带结烧裤腿肉", "乐安霉鱼", "糯米排骨", "柠檬凤爪", "毛氏红烧肉", "木耳马蹄猪肝", "马蹄木耳猪肝", "猪三宝", "猪杂烧豆腐", "五香鸡腿", "糖醋带鱼", "肉丸烧蛋白", "麻辣小甲鱼", "藕带猪肚", "爆炒腰花", "萝菜猪尾", "东坡肉", "黑椒牛柳", "土豆牛腩", "肉方蒸蛋", "牛排炖萝卜", "香菜拌鸡", "腌菜大肠", "黄丫头烧荷包蛋", "肉沫蒸蛋", "剁椒蒸鱼", "萍乡小炒肉", "蒜苗炒腰肝", "爆炒花甲", "油豆腐烧肉", "蒜苗猪耳", "黄牙头烧豆腐", "麻辣鸭锁骨", "猪脸肉烧蛋", "爆炒鸭心", "香辣基围虾", "黄豆鸡脚", "蒜苗炒顺风", "黄牙头荷包蛋", "豆鼓焖肉", "黄豆鸡爪", "皮蛋肉丸", "土豆蒸排骨", "小炒黄牛肉", "米椒烧乌鸡", "排骨烧莲藕", "水芹牛肉", "蒜蓉圣子", "红烧带鱼", "蒜苗猪舌", "全家福", "土豆烧排骨", "荷包辣炒荷包蛋", "黄芽头荷包蛋", "小炒鸭块", "马蹄炒猪肝", "黄豆猪脚", "黄芽头烧豆腐", "麻辣鱼丁", "鲶鱼荷包蛋", "鹿茸烧肉", "清蒸开胃鱼"];
+const ZH_FISH = ["红烧鱼块", "鲶鱼烧荷包蛋", "干煸泥鳅", "清蒸鲈鱼", "椒盐基围虾", "鲶鱼烧豆腐", "红烧黄丫头", "洋葱鳝片", "剁椒鱼头", "小泥鳅", "水煮鱼片", "酒糟鱼", "香辣鱼", "葱油圣子", "开胃花甲", "开胃鱼", "蒜蓉基围虾", "乐安霉鱼", "糖醋带鱼", "麻辣小甲鱼", "黄丫头烧荷包蛋", "剁椒蒸鱼", "爆炒花甲", "黄牙头烧豆腐", "香辣基围虾", "黄牙头荷包蛋", "蒜蓉圣子", "红烧带鱼", "麻辣鱼丁", "鲶鱼荷包蛋", "清蒸开胃鱼"];
+const HH = ["红烧冬瓜", "干锅花菜", "葫子炒肉", "肉末长豆角", "三鲜腐竹", "荷包辣", "红烧南瓜", "四季豆", "清炒莴笋", "香干炒肉", "白勺西蓝花", "家乡藕丁", "酸辣土豆丝", "茭白炒肉", "热拌海带丝", "长豆角", "肉末冬瓜", "小葱豆腐", "西红柿炒蛋", "香油腐竹", "洋葱土豆片", "花菜炒肉", "虾米萝卜丝", "黄瓜火腿肠", "茄子豆角", "酸辣木耳", "水煮油豆腐", "清炒淮山", "北瓜炒肉", "腐竹炒肉", "肉末茄丁", "洋葱土豆", "北瓜", "豆干炒肉", "家乡苦瓜", "咸鱼茄丁", "泡椒藕丁", "清炒丝瓜", "麻辣豆腐", "西蓝花", "香辣腐竹", "黄瓜皮蛋", "家乡茄子", "凉拌木耳", "土豆丝", "小炒长豆角", "素炒土豆丝", "清炒苦瓜", "毛豆肉丁", "胡萝卜炒肉", "清油茄子", "墨鱼烧芋头", "干煸花菜", "小炒木耳", "水笋炒肉", "素炒胡萝卜丝", "红油腐竹", "酸菜小竹笋", "红白豆腐", "芥菜梗", "青油茄子", "韭黄炒蛋", "空心梗炒油渣", "凉拌莴笋丝", "干锅萝卜", "香菇滑肉", "西红柿炒鸡", "干炝土豆丝", "长豆角炒肉", "有机花菜炒肉", "红烧芋仔", "醋熘木耳", "宜黄笋丝", "凉拌藕片", "肉沫长豆角", "肉沫冬瓜", "肉沫茄丁", "西兰花", "丝瓜", "凉拌腐竹", "爆炒三丝", "肉沫茄子", "麻婆豆腐", "丝瓜烩油条", "干煸四季豆", "肉沫豆腐", "小竹笋", "小炒花菜", "笋丝炒肉", "豆角茄子", "热拌腐竹", "黄瓜拌皮蛋", "酱干炒肉", "荷包辣炒荷包蛋", "腊味洋姜", "地瓜炒肉", "腊肉洋姜", "家乡芥菜梗", "荷兰豆", "家乡茄丁", "皮蛋豆腐"];
+const HH_FISH = ["虾米萝卜丝", "咸鱼茄丁", "墨鱼烧芋头"];
+const SC = ["小菜心", "娃娃菜", "油麦菜", "空心菜", "小青菜", "老板菜", "韭菜豆芽", "小白菜", "芽白", "手撕包菜", "菜心", "广东菜心", "红菜心", "水托空心菜"];
+const TG = ["香菇肉片汤", "肉丸汤", "银耳莲子汤", "冬瓜肉片汤", "平菇肉丝汤", "紫菜蛋汤", "墨鱼肉丸汤", "绿豆汤", "仙草糕", "西红柿蛋汤", "鲜草糕", "水蒸蛋", "黄花猪肝汤", "香菇肉丸汤", "汤圆"];
+const FRUIT = '水果';
+
+const KEY = 'wb_kitchen_week_v1';
+const DAYS = [
+  {idx:1,name:'周一'},{idx:2,name:'周二'},{idx:3,name:'周三'},
+  {idx:4,name:'周四'},{idx:5,name:'周五'},{idx:6,name:'周六'},{idx:7,name:'周日'}
+];
+const NAME = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};
+const FULLNAME = {1:'星期一',2:'星期二',3:'星期三',4:'星期四',5:'星期五',6:'星期六',7:'星期日'};
+
+const zhFishSet = new Set(ZH_FISH);
+const hhFishSet = new Set(HH_FISH);
+const tgFishSet = new Set(['墨鱼肉丸汤']);
+
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); const t=a[i];a[i]=a[j];a[j]=t;} return a; }
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function dayName(i){ return NAME[i]; }
+
+function loadState(){
+  try{ const v=localStorage.getItem(KEY); if(v){ const s=JSON.parse(v); if(s && s.selected) return s; } }catch(e){}
+  // 首屏示例：默认全选 7 天并自动生成一版，避免空白
+  const s={selected:[1,2,3,4,5,6,7], week:null, lastZhuhun:[]};
+  const r0=buildWeek(s.selected, []);
+  s.week=r0.week; s.lastZhuhun=r0.weekZh;
+  saveState(s);
+  return s;
+}
+function saveState(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+let state = loadState();
+
+function renderDays(){
+  const box=document.getElementById('days');
+  box.innerHTML = DAYS.map(d=>{
+    const on = state.selected.includes(d.idx);
+    return '<button class="day '+(on?'on':'')+'" onclick="toggleDay('+d.idx+')">'+d.name+'<span class="d-sub">'+(on?'已选':'休息')+'</span></button>';
+  }).join('');
+}
+function toggleDay(idx){
+  const i=state.selected.indexOf(idx);
+  if(i>=0) state.selected.splice(i,1); else state.selected.push(idx);
+  state.selected.sort((a,b)=>a-b);
+  // 切换日期不立刻重算，等用户点生成；但清掉旧结果避免误导
+  state.week=null; saveState(state);
+  renderDays(); renderResult(); renderOverview();
+}
+function generate(){
+  if(!state.selected.length){ toast('请先勾选至少一天'); return; }
+  const r=buildWeek(state.selected, state.lastZhuhun||[]);
+  state.week=r.week; state.lastZhuhun=r.weekZh;
+  saveState(state);
+  renderResult(); renderOverview();
+  document.getElementById('copyBtn').style.display='inline-flex';
+}
+
+function buildWeek(selected, lastArr){
+  const last=new Set(lastArr||[]);
+  // 水产次数：每周目标 2~3 次；工作日不足时取最大可能（≤3）
+  const N=selected.length;
+  let fishCount;
+  if(N>=3) fishCount=randInt(2,3);
+  else if(N===2) fishCount=2;
+  else fishCount=1;
+  const order=shuffle(selected.slice());
+  const fishDays=new Set(order.slice(0,fishCount));
+  // 非鱼日主荤：历史非鱼且非上周；鱼日主荤：历史鱼菜且非上周
+  const zhNonFish=shuffle(ZH.filter(n=> !last.has(n) && !zhFishSet.has(n)));
+  const zhFish=shuffle(ZH_FISH.filter(n=> !last.has(n)));
+  const hhNon=shuffle(HH.filter(n=>!hhFishSet.has(n)));
+  const scQ=shuffle(SC);
+  const tgQ=shuffle(TG.filter(n=>!tgFishSet.has(n)));
+
+  let ni=0,fi=0,hi=0,si=0,ti=0;
+  const weekZh=[];
+  const result=[];
+  // 先给每一天分配 2 道「非鱼主荤」（保证非鱼日绝不出现鱼、且周内不重复）
+  for(const idx of selected){
+    const zh=[ zhNonFish[ni++] || ZH[0], zhNonFish[ni++] || ZH[0] ];
+    const hh=[ hhNon[hi++], hhNon[hi++] ];
+    const sc= scQ[si++] || SC[0];
+    const tg= tgQ[ti++] || TG[0];
+    result.push({idx,name:dayName(idx), zh, hh, sc, tg, fruit:FRUIT});
+  }
+  // 再在指定「鱼日」上替换 1 道鱼主荤（鱼日必含鱼、其余日绝不出现鱼）
+  for(const idx of fishDays){
+    const d=result.find(x=>x.idx===idx);
+    if(d && fi<zhFish.length){ d.zh[0]=zhFish[fi++]; }
+  }
+  result.forEach(d=>{ weekZh.push(d.zh[0], d.zh[1]); });
+  return {week:result, weekZh:weekZh}; // 本周主荤回传，供下周/下次避开
+}
+
+function fishMark(name){
+  if(zhFishSet.has(name)||hhFishSet.has(name)||tgFishSet.has(name)) return '<span class="fishdot">鱼</span>';
+  return '';
+}
+function hasFish(d){
+  return d.zh.some(x=>zhFishSet.has(x)) || d.hh.some(x=>hhFishSet.has(x)) || tgFishSet.has(d.tg);
+}
+function rowHTML(tag,label,items){
+  const dis = items.map(x=> esc(x)+fishMark(x)).join('、 ');
+  return '<div class="row"><span class="tag '+tag+'">'+label+'</span><span class="dishes">'+dis+'</span></div>';
+}
+function renderResult(){
+  const card=document.getElementById('resultCard');
+  const box=document.getElementById('result');
+  if(!state.week || !state.week.length){ card.style.display='none'; box.innerHTML=''; return; }
+  card.style.display='block';
+  box.innerHTML = state.week.map(d=>{
+    const badge = hasFish(d)? '<span class="badge-fish">含鱼</span>' : '';
+    return '<div class="daycard"><div class="dh"><span class="dn">'+d.name+'</span>'+badge+'</div>'
+      + rowHTML('zh','主荤',d.zh)
+      + rowHTML('hh','花荤',d.hh)
+      + rowHTML('sc','素菜',[d.sc])
+      + rowHTML('tg','汤',[d.tg])
+      + rowHTML('fr','水果',[d.fruit])
+      + '</div>';
+  }).join('');
+}
+function renderOverview(){
+  const card=document.getElementById('overviewCard');
+  if(!state.week||!state.week.length){ card.style.display='none'; return; }
+  card.style.display='block';
+  const fishDays=state.week.filter(hasFish).length;
+  const sel=state.selected.map(dayName).join('、');
+  document.getElementById('summary').innerHTML =
+    '<span class="chip">工作日：'+sel+'</span>'+
+    '<span class="chip">共 '+state.week.length+' 天</span>'+
+    '<span class="chip fish">水产 '+fishDays+' 次（目标2-3）</span>';
+  const lastCnt=(state.lastZhuhun||[]).length;
+  document.getElementById('overviewNote').textContent =
+    '已自动避开上周主荤（'+(lastCnt?lastCnt:0)+' 道）；下次生成将自动避开本周主荤。';
+}
+
+/* 一键复制：格式对齐原始 Word 菜单——星期一行 + 7道菜逗号连成一行以句号结尾 */
+function buildCopyText(){
+  if(!state.week||!state.week.length) return '';
+  let t='';
+  state.week.forEach((d, i)=>{
+    if(i>0) t+='\n';
+    t += FULLNAME[d.idx] + '\n';
+    const dishes = d.zh.concat(d.hh, [d.sc], [d.tg], [d.fruit]);
+    t += dishes.join('，') + '。\n';
+  });
+  return t;
+}
+function copyWeek(){
+  const txt=buildCopyText();
+  if(!txt){ toast('暂无可复制内容'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('已复制本周配菜')).catch(()=>fallbackCopy(txt));
+  } else fallbackCopy(txt);
+}
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  let ok=false;
+  try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+  document.body.removeChild(ta);
+  if(ok){ toast('已复制本周配菜'); }
+  else { showCopyFallback(txt); }   // 剪贴板不可用 → 弹出可长按文本框
+}
+function showCopyFallback(txt){
+  document.getElementById('copyText').value=txt;
+  document.getElementById('copyFallback').style.display='flex';
+}
+function closeCopyFallback(){
+  document.getElementById('copyFallback').style.display='none';
+}
+function retryCopy(){
+  closeCopyFallback();
+  copyWeek();
+}
+
+/* 备份 */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const d=new Date(); const ds=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+  a.download='厨房配菜备份-'+ds+'.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importJSON(input){
+  const f=input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s.selected) throw 0; state=s; if(!state.week){ const rr=buildWeek(state.selected, state.lastZhuhun||[]); state.week=rr.week; state.lastZhuhun=rr.weekZh; } saveState(state); renderDays(); renderResult(); renderOverview(); document.getElementById('copyBtn').style.display = state.week&&state.week.length?'inline-flex':'none'; toast('恢复成功'); }
+    catch(e){ toast('文件格式不对'); } input.value=''; };
+  r.readAsText(f);
+}
+function resetAll(){
+  if(!confirm('确定清空所有记录（含上周主荤记忆）？此操作不可恢复。')) return;
+  const rr2=buildWeek([1,2,3,4,5,6,7], []);
+  state={selected:[1,2,3,4,5,6,7], week:rr2.week, lastZhuhun:rr2.weekZh};
+  saveState(state); renderDays(); renderResult(); renderOverview();
+  document.getElementById('copyBtn').style.display='inline-flex';
+  toast('已重置为示例周');
+}
+
+/* 工具 */
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* 初始化 */
+renderDays(); renderResult(); renderOverview();
+if(state.week&&state.week.length) document.getElementById('copyBtn').style.display='inline-flex';
+</script>
+</body>
+</html>
