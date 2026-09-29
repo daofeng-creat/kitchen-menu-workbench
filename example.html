@@ -71,6 +71,18 @@
   .overlay .btnrow .btn{flex:1; justify-content:center;}
   .toast.show{opacity:1;}
   .footer{color:var(--muted); font-size:12px; text-align:center; margin-top:6px;}
+  /* 手动改菜 */
+  .dish{cursor:pointer; border-bottom:1.5px dashed transparent; padding:0 1px; transition:background .15s;}
+  .dish:active{background:#fdeee6; border-bottom-color:var(--primary);}
+  .sep{color:var(--muted); margin:0 1px;}
+  .edit-hint{font-size:13px; color:var(--primary); margin:-4px 0 10px; display:flex; align-items:center; gap:5px;}
+  .picker-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .picker-head .pt{font-size:16px; font-weight:700;}
+  .picker-list{max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch; margin:0 -4px; padding:0 4px;}
+  .picker-item{display:flex; align-items:center; justify-content:space-between; padding:11px 12px; border-radius:10px; font-size:15px; color:var(--text); border:1px solid transparent;}
+  .picker-item:active{background:#fdeee6;}
+  .picker-item.sel{background:#fdeee6; border-color:var(--primary); color:var(--primary); font-weight:600;}
+  .picker-item .ck{color:var(--primary); font-weight:700;}
 </style>
 </head>
 <body>
@@ -114,6 +126,7 @@
         <li>本周主荤自动避开「上周主荤」；下周生成时也会自动避开本周（跨周不重复）。</li>
         <li>同一周内主荤尽量不重复，保证搭配丰富。</li>
         <li>菜品全部来自厨师历史菜单，按品类归类成库。</li>
+        <li>生成后点任意菜名可手动替换（从对应品类库中选），手动修改也会同步更新「避开上周」记忆。</li>
       </ul>
     </details>
   </div>
@@ -129,6 +142,12 @@
       <button class="btn ghost" onclick="closeCopyFallback()">关闭</button>
       <button class="btn" onclick="retryCopy()">再试一次</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="editOverlay" style="display:none" onclick="if(event.target===this)closeEdit()">
+  <div class="sheet">
+    <div class="picker-head"><span class="pt" id="editTitle">选择菜品</span><button class="btn ghost" style="min-height:38px;padding:0 14px" onclick="closeEdit()">关闭</button></div>
+    <div class="picker-list" id="editList"></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -238,8 +257,11 @@ function fishMark(name){
 function hasFish(d){
   return d.zh.some(x=>zhFishSet.has(x)) || d.hh.some(x=>hhFishSet.has(x)) || tgFishSet.has(d.tg);
 }
-function rowHTML(tag,label,items){
-  const dis = items.map(x=> esc(x)+fishMark(x)).join('、 ');
+function rowHTML(dayIdx, cat, tag, label, items){
+  const dis = items.map((x,pos)=>{
+    const fm = fishMark(x);
+    return '<span class="dish" onclick="editDish('+dayIdx+',\''+cat+'\','+pos+')">'+esc(x)+fm+'</span>';
+  }).join('<span class="sep">、</span>');
   return '<div class="row"><span class="tag '+tag+'">'+label+'</span><span class="dishes">'+dis+'</span></div>';
 }
 function renderResult(){
@@ -250,13 +272,14 @@ function renderResult(){
   box.innerHTML = state.week.map(d=>{
     const badge = hasFish(d)? '<span class="badge-fish">含鱼</span>' : '';
     return '<div class="daycard"><div class="dh"><span class="dn">'+d.name+'</span>'+badge+'</div>'
-      + rowHTML('zh','主荤',d.zh)
-      + rowHTML('hh','花荤',d.hh)
-      + rowHTML('sc','素菜',[d.sc])
-      + rowHTML('tg','汤',[d.tg])
-      + rowHTML('fr','水果',[d.fruit])
+      + rowHTML(d.idx,'zh','zh','主荤',d.zh)
+      + rowHTML(d.idx,'hh','hh','花荤',d.hh)
+      + rowHTML(d.idx,'sc','sc','素菜',[d.sc])
+      + rowHTML(d.idx,'tg','tg','汤',[d.tg])
+      + rowHTML(d.idx,'fr','fr','水果',[d.fruit])
       + '</div>';
-  }).join('');
+  }).join('')
+  + '<p class="edit-hint">✎ 点任意菜名可手动替换（从对应品类库中选择）</p>';
 }
 function renderOverview(){
   const card=document.getElementById('overviewCard');
@@ -271,6 +294,63 @@ function renderOverview(){
   const lastCnt=(state.lastZhuhun||[]).length;
   document.getElementById('overviewNote').textContent =
     '已自动避开上周主荤（'+(lastCnt?lastCnt:0)+' 道）；下次生成将自动避开本周主荤。';
+}
+
+/* 手动改菜：点菜名 → 从对应品类库中选择替换 */
+const CAT_LABEL = {zh:'主荤', hh:'花荤', sc:'素菜', tg:'汤', fr:'水果'};
+let editCtx = null;
+function catPool(cat){
+  return cat==='zh'?ZH : cat==='hh'?HH : cat==='sc'?SC : cat==='tg'?TG : [FRUIT];
+}
+function currentDish(d, cat, pos){
+  if(cat==='zh') return d.zh[pos];
+  if(cat==='hh') return d.hh[pos];
+  if(cat==='sc') return d.sc;
+  if(cat==='tg') return d.tg;
+  return d.fruit;
+}
+function editDish(dayIdx, cat, pos){
+  editCtx = {dayIdx, cat, pos};
+  const d = state.week.find(x=>x.idx===dayIdx);
+  if(!d) return;
+  const cur = currentDish(d, cat, pos);
+  const pool = catPool(cat);
+  document.getElementById('editTitle').textContent = '选择'+CAT_LABEL[cat];
+  let html = '';
+  pool.forEach((n,i)=>{
+    const sel = n===cur ? ' sel' : '';
+    const ck = n===cur ? '<span class="ck">✓</span>' : '';
+    html += '<div class="picker-item'+sel+'" onclick="pickDish('+i+')">'+esc(n)+fishMark(n)+ck+'</div>';
+  });
+  document.getElementById('editList').innerHTML = html;
+  document.getElementById('editOverlay').style.display='flex';
+}
+function pickDish(i){
+  if(!editCtx) return;
+  const {dayIdx, cat, pos} = editCtx;
+  const pool = catPool(cat);
+  const name = pool[i];
+  const d = state.week.find(x=>x.idx===dayIdx);
+  if(!d || name===undefined) return;
+  if(cat==='zh') d.zh[pos]=name;
+  else if(cat==='hh') d.hh[pos]=name;
+  else if(cat==='sc') d.sc=name;
+  else if(cat==='tg') d.tg=name;
+  else if(cat==='fr') d.fruit=name;
+  recomputeWeekZh();
+  saveState(state);
+  closeEdit();
+  renderResult(); renderOverview();
+  toast('已更新');
+}
+function closeEdit(){
+  document.getElementById('editOverlay').style.display='none';
+  editCtx = null;
+}
+/* 手动改菜后，用实际本周主荤刷新「避开上周」记忆，保证下周不重 */
+function recomputeWeekZh(){
+  if(!state.week) return;
+  state.lastZhuhun = state.week.flatMap(d=>[d.zh[0], d.zh[1]]);
 }
 
 /* 一键复制：格式对齐原始 Word 菜单——星期一行 + 7道菜逗号连成一行以句号结尾 */
